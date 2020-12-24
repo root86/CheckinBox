@@ -2,7 +2,9 @@ name: 'run'
 
 on:
   schedule:
-    - cron: '30 16 * * *'
+    - cron: '0 4 * * *' #中午12:00执行，时间与其他脚本有依赖关系如无必要请勿修改
+  watch:
+    types: started
   workflow_dispatch:
 
 jobs:
