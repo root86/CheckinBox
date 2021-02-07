@@ -88,6 +88,12 @@ def main(username:str, password:str):
                 description = "未知"
             print(f"抽奖获得  {description}  ")
             msg += f"抽奖获得  {description}  ,"
+            if(SCKEY != ""):
+                data = {
+                    "text" : "天翼云签到成功",
+                    "desp" : msg
+                    }
+                sc = requests.post(scurl, data=data)
     except Exception as e:
         print("天翼云签到出错：", repr(e))
         if(SCKEY != ""):
