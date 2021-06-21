@@ -3,7 +3,13 @@
 import json
 import time
 import os
-import requests
+import requests, sys
+sys.path.append('.')
+requests.packages.urllib3.disable_warnings()
+try:
+    from pusher import pusher
+except:
+    pass
 
 headers = {
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3",
@@ -26,7 +32,6 @@ login_password = os.environ.get("fflogin_password")
 area_name = os.environ.get("area_name")
 server_name = os.environ.get("server_name")
 role_name = os.environ.get("role_name")
-SCKEY = os.environ.get('SCKEY')
 global cookie
 cookie = {}
 
@@ -68,13 +73,7 @@ def step1() -> str:
         return obj["data"]["ticket"]
     else:
         print("登录失败, 短期内登录失败次数过多, 服务器已开启验证码, 请在1-3天后再试...")
-        if SCKEY:
-            scurl = f"https://sc.ftqq.com/{SCKEY}.send"
-            data = {
-                "text" : "FF14签到出错",
-                "desp" : "登录失败, 短期内登录失败次数过多, 服务器已开启验证码, 请在1-3天后再试..."
-                }
-            requests.post(scurl, data=data)
+        pusher("FF14签到出错", "登录失败, 短期内登录失败次数过多, 服务器已开启验证码, 请在1-3天后再试...")
         return None
 
 # 设置cookie
@@ -145,13 +144,7 @@ def step5() -> str:
             print("获取角色列表成功...")
             return role.format(r["cicuid"], r["worldname"], r["groupid"])
     print("获取角色列表失败...")
-    if SCKEY:
-        scurl = f"https://sc.ftqq.com/{SCKEY}.send"
-        data = {
-            "text" : "FF14签到出错",
-            "desp" : "获取角色列表失败..."
-            }
-        requests.post(scurl, data=data)
+    pusher("FF14签到出错", "获取角色列表失败...")
     return None
 
 # 选择区服及角色
@@ -187,13 +180,8 @@ def step7():
     r = requests.post(url, params=params, cookies=cookie)
     obj = json.loads(r.text)
     print(obj["Message"])
-    if obj["Message"] != "成功" and SCKEY:
-        scurl = f"https://sc.ftqq.com/{SCKEY}.send"
-        data = {
-            "text" : "FF14签到出错",
-            "desp" : "签到失败..."
-            }
-        requests.post(scurl, data=data)
+    if obj["Message"] != "成功":
+        pusher("FF14签到出错", "签到失败...")
         return False
     return True
 
@@ -233,11 +221,19 @@ def main(*arg):
 def go(*arg):
     msg = ""
     global login_name, login_password, area_name, server_name, role_name
-    nlist = login_name.split("\n")
-    plist = login_password.split("\n")
-    alist = area_name.split("\n")
-    slist = server_name.split("\n")
-    rlist = role_name.split("\n")
+    if "\\n" in login_name:
+        nlist = login_name.split("\\n")
+        plist = login_password.split("\\n")
+        alist = area_name.split("\\n")
+        slist = server_name.split("\\n")
+        rlist = role_name.split("\\n")
+    else:
+        nlist = login_name.split("\n")
+        plist = login_password.split("\n")
+        alist = area_name.split("\n")
+        slist = server_name.split("\n")
+        rlist = role_name.split("\n")
+
     if len(nlist) == len(plist) == len(alist) == len(slist) == len(rlist):
         i = 0
         while i < len(nlist):

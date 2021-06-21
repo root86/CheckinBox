@@ -1,12 +1,15 @@
-import requests, sys, json, time, hashlib, os
-
+import requests, sys, json, time, hashlib, os, sys
+sys.path.append('.')
 requests.packages.urllib3.disable_warnings()
+try:
+    from pusher import pusher
+except:
+    pass
 
 s = requests.Session()
 
 note_username = os.environ.get('note_username')
 note_password = os.environ.get('note_password')
-SCKEY = os.environ.get('SCKEY')
 user_dict = {}
 
 def checkin(YNOTE_SESS): 
@@ -23,10 +26,9 @@ def checkin(YNOTE_SESS):
         t = time.strftime('%Y-%m-%d %H:%M:%S',
                           time.localtime(info['time'] / 1000))
         msg = ' 签到成功，本次获取 '+str(space) + ' M, 总共获取 '+str(total)+' M, 签到时间 '+str(t)
-        print(msg)
         return msg
     # cookie 登录失效或获取失败，改用用户名密码登录
-    else:
+    elif "AUTHENTICATION_FAILURE" in r.text:
         if note_username and note_password:
             YNOTE_SESS = login(note_username, note_password)
             if YNOTE_SESS:
@@ -34,6 +36,9 @@ def checkin(YNOTE_SESS):
         else:
             msg = "未设置账号密码并且cookie过期"
         return msg
+    else:
+        pusher("有道云笔记签到出现未知错误", r.text[:200])
+        return r.text
 
 def login(username, password):
     t = str(round(time.time()*1000))
@@ -52,13 +57,7 @@ def login(username, password):
         YNOTE_SESS = "-1"
         msg = f" {username} 有道云登录失败"
         print(msg)
-        if SCKEY:
-            scurl = f"https://sc.ftqq.com/{SCKEY}.send"
-            data = {
-                    "text" : msg,
-                    "desp" : r.text
-                    }
-            requests.post(scurl, data=data)
+        pusher(msg, r.text[:200])
         return ""
     else:
         print(f'{username} 登陆成功，更新YNOTE_SESS,重新签到')
@@ -81,14 +80,19 @@ def main(*args):
     except:
         data = ""
         msg = check(data)
+    print(msg)
     return msg
 
 def check(data):
     global note_username, note_password, user_dict
     msg = ""
     user_dict = data
-    ulist = note_username.split("\n")
-    plist = note_password.split("\n")
+    if "\\n" in note_username:
+        ulist = note_username.split("\\n")
+        plist = note_password.split("\\n")
+    else: 
+        ulist = note_username.split("\n")
+        plist = note_password.split("\n")
     # 如果cookie个数与账号数量不匹配则所有账号都重新登录一遍
     if len(data) != len(ulist):
         if len(ulist) == len(plist):
